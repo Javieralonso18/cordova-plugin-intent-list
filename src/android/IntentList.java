@@ -36,7 +36,8 @@ import org.json.JSONObject;
 public class IntentList extends CordovaPlugin {
 
     public static final String ACTION_GET_INTENT_LIST = "getIntentList";
-
+    public static final String ACTION_GET_INTENT_MIN = "getIntentMin";
+    
     // @see https://stackoverflow.com/a/10600736
     public static Bitmap drawableToBitmap (Drawable drawable) {
         Bitmap bitmap = null;
@@ -63,8 +64,40 @@ public class IntentList extends CordovaPlugin {
             getIntentList(callbackContext);
             return true;
         }
+        if (ACTION_GET_INTENT_MIN.equals(action)) {
+            getIntentMin(callbackContext);
+            return true;
+        }
         callbackContext.error("Invalid action");
         return false;
+    }
+    
+        private void getIntentMin(final CallbackContext callbackContext) {
+        cordova.getThreadPool().execute(new Runnable() {
+            public void run() {
+                try {
+                    // Get list of Intents from packageManager
+                    Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+                    mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                    PackageManager packageManager = cordova.getActivity().getPackageManager();
+                    List<ResolveInfo> resovleInfoList = packageManager.queryIntentActivities(mainIntent, 0);
+                    // Create JSON array for js results
+                    JSONArray applicationsList = new JSONArray();
+                    for (ResolveInfo resolveInfo : resovleInfoList) {
+                        String packageName = resolveInfo.activityInfo.packageName; // Get Intent package name
+                        CharSequence intentLabel = resolveInfo.loadLabel(packageManager); //这里获取的是应用名 //Keep original comment ;)
+                        JSONObject intentInfo = new JSONObject();
+                        intentInfo.put("label", intentLabel);
+                        intentInfo.put("package", packageName);
+                        applicationsList.put(intentInfo);
+                    }
+                    callbackContext.success(applicationsList);
+                } catch (Exception e) {
+                    System.err.println("Exception: " + e.getMessage());
+                    callbackContext.error(e.getMessage());
+                }
+            }// end of Run Runnable()
+        });// end of run getThreadPool()
     }
 
     private void getIntentList(final CallbackContext callbackContext) {
@@ -104,4 +137,5 @@ public class IntentList extends CordovaPlugin {
             }// end of Run Runnable()
         });// end of run getThreadPool()
     }
+    
 }
